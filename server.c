@@ -2,12 +2,18 @@
 //generic
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h> //for memset()
+#include <string.h> //for memset() and strlen()
 
 //networking
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include <sys/socket.h> //socket
+#include <netinet/in.h> //sockaddr_in
+#include <arpa/inet.h> //inet_ntoa()
 
+//read() and write()
+#include <unistd.h>
+
+//(⌐■_■)
+#include "utils/utils.h"
 
 /*DEFINE*/
 #define PORT 8080
@@ -60,6 +66,16 @@ int main(){
         perror("accept() failed.");
         exit(EXIT_FAILURE);
     }
-    printf("Client connected!");
+    printf("Client connected!\n");
 
+    char *buffer = malloc(50*sizeof(char));
+    int bytes_read;
+
+    while((bytes_read = read(clientfd, buffer, sizeof(buffer))) > 0){
+        printf("%s said: %s", inet_ntoa(client_addr.sin_addr), buffer);
+        char* clean_msg = escape_characters(buffer);
+        write(clientfd, clean_msg, strlen(clean_msg));
+        free(clean_msg);
+    }
+    printf("Client disconnected!\n");
 }
