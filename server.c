@@ -2,21 +2,22 @@
 //generic
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h> //for memset() and strlen()
+#include <string.h>
 
 //networking
+#include <arpa/inet.h> //inet_ntoa()
 #include <sys/socket.h> //socket
 #include <netinet/in.h> //sockaddr_in
-#include <arpa/inet.h> //inet_ntoa()
 
 //read() and write()
 #include <unistd.h>
 
-//(⌐■_■)
-#include "utils/utils.h"
 
 /*DEFINE*/
 #define PORT 8080
+
+/*PROTOTYPES*/
+char* escape_characters(char* input);
 
 
 int main(){
@@ -25,7 +26,7 @@ int main(){
     int socketfd = socket(AF_INET, SOCK_STREAM, 0);
 
     if(socketfd < 0){ // Failed?
-        perror("Couldn't get socketfd.");
+        perror("Couldn't set socketfd.");
         exit(EXIT_FAILURE);
     }
     printf("socketfd successful!\n");
@@ -68,14 +69,48 @@ int main(){
     }
     printf("Client connected!\n");
 
+
+    //receive a message
     char *buffer = malloc(50*sizeof(char));
     int bytes_read;
 
     while((bytes_read = read(clientfd, buffer, sizeof(buffer))) > 0){
-        printf("%s said: %s", inet_ntoa(client_addr.sin_addr), buffer);
+        printf("%s said: %s\n", inet_ntoa(client_addr.sin_addr), buffer);
         char* clean_msg = escape_characters(buffer);
-        write(clientfd, clean_msg, strlen(clean_msg));
+        send(clientfd, clean_msg, strlen(clean_msg), 0);
         free(clean_msg);
     }
     printf("Client disconnected!\n");
+
+    close(socketfd);
+    return 0;
 }
+
+
+char* escape_characters(char* input){
+    char* output = malloc(2 * strlen(input) + 1); //worst case, all need to be escaped
+    char* start = output; //keep track of the beginning
+    while(*input){
+        switch(*input){
+            case '\n':
+                *output++ = '\\';
+                *output++ = 'n';
+                break;
+            case '\t':
+                *output++ = '\\';
+                *output++ = 't';
+                break;
+            case '\\':
+                *output++ = '\\';
+                *output++ = '\\';
+                break;
+            default:
+                *output++ = *input;
+        }
+        input++;
+    }
+
+    *output = '\0';
+    return start;
+}
+
