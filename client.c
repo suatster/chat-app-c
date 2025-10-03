@@ -16,6 +16,8 @@
 #define TARGET_IP_STR "127.0.0.1"
 #define TARGET_PORT 8080
 
+int send_message(int sockfd, char* msg);
+int receive_message(int sockfd, char* str_to_save, size_t str_size);
 
 int main(){
     //open socket
@@ -45,18 +47,23 @@ int main(){
         exit(EXIT_FAILURE);
     }
 
-    //send a message
-    char* msg = "Hello from client!";
-    send(socketfd, msg, strlen(msg), 0);
 
-    char buffer[1024];
-    int n = recv(socketfd, buffer, sizeof(buffer)-1, 0);
-    if (n > 0) {
-        buffer[n] = '\0';
-        printf("Server replied: %s\n", buffer);
+    //send the test message
+    char* message = "Hello from client!";
+    if (!send_message(socketfd, message)){
+        fprintf(stderr, "Failed to send the message.\n");
+        exit(EXIT_FAILURE);
     }
+    printf("Message sent!\n");
 
-
+    //receive the response
+    char buffer[1024];
+    if (!receive_message(socketfd, buffer, sizeof(buffer))){
+        fprintf(stderr, "Failed to receive a message.\n");
+    }
+    printf("Received message!\n");
+    printf("Server replied: %s\n", buffer);
+    
 
     printf("Connected to server!\n");
     printf("Disconnecting...\n");
@@ -65,3 +72,17 @@ int main(){
     return 0;
 }
 
+int send_message(int sockfd, char* msg){
+    //send a message
+    if (send(sockfd, msg, strlen(msg), 0) > 0) return 1;
+    else return 0;
+}
+
+int receive_message(int sockfd, char* str_to_save, size_t str_size){
+    int n = recv(sockfd, str_to_save, str_size, 0);
+    if (n > 0) {
+        str_to_save[n] = '\0';
+        return 1;
+    }
+    else return 0;
+}
