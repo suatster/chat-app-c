@@ -18,8 +18,9 @@
 
 /*PROTOTYPES*/
 char* escape_characters(char* input);
+int receive_message_length(int sockfd);
 
-
+/*FUNCTIONS*/
 int main(){
     /*SET SERVER*/
     //Open the socket
@@ -74,19 +75,21 @@ int main(){
     char *buffer = malloc(50*sizeof(char));
     int bytes_read;
 
-    while((bytes_read = read(clientfd, buffer, sizeof(buffer))) > 0){
+    /*while((bytes_read = read(clientfd, buffer, sizeof(buffer))) > 0){
         printf("%s said: %s\n", inet_ntoa(client_addr.sin_addr), buffer);
         char* clean_msg = escape_characters(buffer);
         send(clientfd, clean_msg, strlen(clean_msg), 0);
         free(clean_msg);
-    }
+    }*/
+    printf("%d\n", receive_message_length(clientfd));
+
     printf("Client disconnected!\n");
 
     close(socketfd);
     return 0;
 }
 
-
+/*UTILITIES*/
 char* escape_characters(char* input){
     char* output = malloc(2 * strlen(input) + 1); //worst case, all need to be escaped
     char* start = output; //keep track of the beginning
@@ -112,5 +115,22 @@ char* escape_characters(char* input){
 
     *output = '\0';
     return start;
+}
+
+/*NETWORKING*/
+int receive_message_length(int clientfd){
+    int bytes_read = 0;
+    int32_t len = 0;
+    while(bytes_read < 4){
+        int read_at_once = recv(clientfd, ((uint8_t*)&len)+bytes_read, 4 - bytes_read, 0);
+        if(read_at_once <= 0) {
+            perror("recv error");
+            return -1;
+        }
+        bytes_read += read_at_once;
+    }
+
+    len = ntohl(len);
+    return len;
 }
 

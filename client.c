@@ -46,8 +46,10 @@ int main(){
         close(socketfd);
         exit(EXIT_FAILURE);
     }
+    printf("Connected to server!\n");
 
-
+    send_message(socketfd, "15");
+    /*
     //send the test message
     char* message = "Hello from client!";
     if (!send_message(socketfd, message)){
@@ -62,10 +64,8 @@ int main(){
         fprintf(stderr, "Failed to receive a message.\n");
     }
     printf("Received message!\n");
-    printf("Server replied: %s\n", buffer);
+    printf("Server replied: %s\n", buffer);*/
     
-
-    printf("Connected to server!\n");
     printf("Disconnecting...\n");
     close(socketfd);
     printf("Disconnected!\n");
@@ -73,9 +73,25 @@ int main(){
 }
 
 int send_message(int sockfd, char* msg){
-    //send a message
-    if (send(sockfd, msg, strlen(msg), 0) > 0) return 1;
-    else return 0;
+    //sends the message prefixed with message length.
+    
+    int len = strlen(msg);
+    int32_t net_len = htonl(len);
+
+    int bytes_sent = 0;
+    while(bytes_sent < 4){
+        int sent_at_once = send(sockfd, ((uint8_t*)&net_len) + bytes_sent, 4 - bytes_sent, 0);
+        if(sent_at_once <= 0) return -1;
+        bytes_sent += sent_at_once;
+    }
+    return 1;
+    
+    // Send the message body
+    if (send(sockfd, msg, len, 0) != len) {
+        return 0; // failed
+    }
+
+    return 1; // success
 }
 
 int receive_message(int sockfd, char* str_to_save, size_t str_size){
@@ -86,3 +102,4 @@ int receive_message(int sockfd, char* str_to_save, size_t str_size){
     }
     else return 0;
 }
+
