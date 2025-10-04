@@ -33,7 +33,7 @@ int main(){
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(TARGET_PORT);
-    if(inet_pton(AF_INET, TARGET_IP_STR, &server_addr.sin_addr.s_addr) < 0){
+    if(inet_pton(AF_INET, TARGET_IP_STR, &server_addr.sin_addr.s_addr) <= 0){ // 0 means invalid format
         fprintf(stderr, "Invalid or unsupported address: %s\n", TARGET_IP_STR);
         exit(EXIT_FAILURE);
     }
@@ -48,24 +48,8 @@ int main(){
     }
     printf("Connected to server!\n");
 
-    send_message(socketfd, "15");
-    /*
-    //send the test message
-    char* message = "Hello from client!";
-    if (!send_message(socketfd, message)){
-        fprintf(stderr, "Failed to send the message.\n");
-        exit(EXIT_FAILURE);
-    }
-    printf("Message sent!\n");
+    send_message(socketfd, "i <3 coding at 2am.");
 
-    //receive the response
-    char buffer[1024];
-    if (!receive_message(socketfd, buffer, sizeof(buffer))){
-        fprintf(stderr, "Failed to receive a message.\n");
-    }
-    printf("Received message!\n");
-    printf("Server replied: %s\n", buffer);*/
-    
     printf("Disconnecting...\n");
     close(socketfd);
     printf("Disconnected!\n");
@@ -84,8 +68,7 @@ int send_message(int sockfd, char* msg){
         if(sent_at_once <= 0) return -1;
         bytes_sent += sent_at_once;
     }
-    return 1;
-    
+
     // Send the message body
     if (send(sockfd, msg, len, 0) != len) {
         return 0; // failed
