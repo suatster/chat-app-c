@@ -18,8 +18,9 @@
 
 /*PROTOTYPES*/
 char* escape_characters(char* input);
-int receive_message_length(int sockfd);
+int32_t receive_message_length(int clientfd);
 int receive_message(int clientfd, char* buffer);
+int send_message(int target_sockfd, char* msg);
 
 /*FUNCTIONS*/
 int main(){
@@ -76,6 +77,8 @@ int main(){
     char *buffer = malloc(50*sizeof(char));
     
     printf("func returned: %d, message: %s\n", receive_message(clientfd, buffer), buffer);
+    printf("sending message: %s to client\n", buffer);
+    send_message(clientfd, buffer);
 
     close(socketfd);
     return 0;
@@ -110,11 +113,11 @@ char* escape_characters(char* input){
 }
 
 /*NETWORKING*/
-int32_t receive_message_length(int clientfd){
+int32_t receive_message_length(int receivefd){
     int bytes_read = 0;
     int32_t len = 0;
     while(bytes_read < 4){
-        int read_at_once = recv(clientfd, ((uint8_t*)&len)+bytes_read, 4 - bytes_read, 0);
+        int read_at_once = recv(receivefd, ((uint8_t*)&len)+bytes_read, 4 - bytes_read, 0);
         if(read_at_once <= 0) {
             perror("recv error");
             return -1;
@@ -126,8 +129,8 @@ int32_t receive_message_length(int clientfd){
     return len;
 }
 
-int receive_message(int clientfd, char* buffer){
-    int32_t message_length = receive_message_length(clientfd);
+int receive_message(int receivefd, char* buffer){
+    int32_t message_length = receive_message_length(receivefd);
 
     if(message_length <= 0){
         perror("receive length error");
@@ -136,7 +139,7 @@ int receive_message(int clientfd, char* buffer){
 
     int bytes_read = 0;
     while(bytes_read < message_length){
-        int read_at_once = recv(clientfd, (uint8_t*)buffer+bytes_read, message_length - bytes_read, 0);
+        int read_at_once = recv(receivefd, (uint8_t*)buffer+bytes_read, message_length - bytes_read, 0);
         if(read_at_once <= 0){
             perror("recv error");
             return -1;
@@ -146,5 +149,26 @@ int receive_message(int clientfd, char* buffer){
     buffer[message_length] = '\0';
     
     return 1;
+}
+
+int send_message(int target_fd, char* msg){
+    //sends the message prefixed with message length.
+    
+    int len = strlen(msg);
+    int32_t net_len = htonl(len);
+
+    int bytes_sent = 0;
+    while(bytes_sent < 4){
+        int sent_at_once = send(target_fd, ((uint8_t*)&net_len) + bytes_sent, 4 - bytes_sent, 0);
+        if(sent_at_once <= 0) return -1;
+        bytes_sent += sent_at_once;
+    }
+
+    // Send the message body
+    if (send(target_fd, msg, len, 0) != len) {
+        return 0; // failed
+    }
+
+    return 1; // success
 }
 

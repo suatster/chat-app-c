@@ -17,7 +17,7 @@
 #define TARGET_PORT 8080
 
 int send_message(int sockfd, char* msg);
-int receive_message(int sockfd, char* str_to_save, size_t str_size);
+int receive_message(int sockfd, char* str_to_save);
 
 int main(){
     //open socket
@@ -50,13 +50,17 @@ int main(){
 
     send_message(socketfd, "i <3 coding at 2am.");
 
+    char* buffer = malloc(50*sizeof(char));
+    receive_message(socketfd, buffer);
+    printf("received: %s\n", buffer);
+
     printf("Disconnecting...\n");
     close(socketfd);
     printf("Disconnected!\n");
     return 0;
 }
 
-int send_message(int sockfd, char* msg){
+int send_message(int target_fd, char* msg){
     //sends the message prefixed with message length.
     
     int len = strlen(msg);
@@ -64,25 +68,54 @@ int send_message(int sockfd, char* msg){
 
     int bytes_sent = 0;
     while(bytes_sent < 4){
-        int sent_at_once = send(sockfd, ((uint8_t*)&net_len) + bytes_sent, 4 - bytes_sent, 0);
+        int sent_at_once = send(target_fd, ((uint8_t*)&net_len) + bytes_sent, 4 - bytes_sent, 0);
         if(sent_at_once <= 0) return -1;
         bytes_sent += sent_at_once;
     }
 
     // Send the message body
-    if (send(sockfd, msg, len, 0) != len) {
+    if (send(target_fd, msg, len, 0) != len) {
         return 0; // failed
     }
 
     return 1; // success
 }
 
-int receive_message(int sockfd, char* str_to_save, size_t str_size){
-    int n = recv(sockfd, str_to_save, str_size, 0);
-    if (n > 0) {
-        str_to_save[n] = '\0';
-        return 1;
+int32_t receive_message_length(int receivefd){
+    int bytes_read = 0;
+    int32_t len = 0;
+    while(bytes_read < 4){
+        int read_at_once = recv(receivefd, ((uint8_t*)&len)+bytes_read, 4 - bytes_read, 0);
+        if(read_at_once <= 0) {
+            perror("recv error");
+            return -1;
+        }
+        bytes_read += read_at_once;
     }
-    else return 0;
+
+    len = ntohl(len);
+    return len;
+}
+
+int receive_message(int receivefd, char* buffer){
+    int32_t message_length = receive_message_length(receivefd);
+
+    if(message_length <= 0){
+        perror("receive length error");
+        return -1;
+    }
+
+    int bytes_read = 0;
+    while(bytes_read < message_length){
+        int read_at_once = recv(receivefd, (uint8_t*)buffer+bytes_read, message_length - bytes_read, 0);
+        if(read_at_once <= 0){
+            perror("recv error");
+            return -1;
+        }
+        bytes_read += read_at_once;
+    }
+    buffer[message_length] = '\0';
+    
+    return 1;
 }
 
